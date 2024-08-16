@@ -1,0 +1,35 @@
+export type Banner = {
+  id: string
+  id_zone: string
+  id_user: string
+  name: string
+  size: string
+  blocked: string
+  coordenates: string
+  source: string
+  is_rentable: string
+  price_per_day: string
+  description: string
+  size_x: string
+  size_y: string
+  size_z: string
+  coordinates_x: string
+  coordinates_y: string
+  coordinates_z: string
+  rotation_x: string
+  rotation_y: string
+  rotation_z: string
+  ref_image: string
+  id_group: string
+  enabled: string
+  click_url: string
+  custom_1: string
+  custom_2: string
+  custom_3: string
+  position_x: string
+  position_y: string
+  position_z: string
+  next_update: string
+  media_url: string
+  ref_image_url: string
+}
