@@ -28,88 +28,88 @@ export const createStoreComponent = ({
     tokenPrice: number,
     notificationCB = (text: string) => {}
   ): Promise<string> {
-    return await new Promise(async (resolve, reject) => {
-      const fromAddress = await getUserAddress()
-      const provider = createEthereumProvider()
-      const metamaskRM = new eth.RequestManager(provider)
-      const contractAddress =
-        ContractConfig.getContractConfigByName('marketplace').address
+    const fromAddress = await getUserAddress()
+    const provider = createEthereumProvider()
+    const metamaskRM = new eth.RequestManager(provider)
+    const contractAddress =
+      ContractConfig.getContractConfigByName('marketplace').address
+    const { contract } = await getContract(
+      contractAddress,
+      providers.metaRequestManager
+    )
 
-      await getContract(contractAddress, providers.metaRequestManager).then(
-        async ({ contract }) => {
-          const approveHex = await contract.buy.toPayload(
-            collectionId,
-            blockchainIds,
-            [eth.toWei(tokenPrice.toString(), 'ether')]
-          )
-          const [domainData, domainType] = getDomainData()
-          const metaTransactionType = [
-            { name: 'nonce', type: 'uint256' },
-            { name: 'from', type: 'address' },
-            { name: 'functionSignature', type: 'bytes' }
-          ]
+    const approveHex = await contract.buy.toPayload(
+      collectionId,
+      blockchainIds,
+      [eth.toWei(tokenPrice.toString(), 'ether')]
+    )
+    const [domainData, domainType] = getDomainData()
+    const metaTransactionType = [
+      { name: 'nonce', type: 'uint256' },
+      { name: 'from', type: 'address' },
+      { name: 'functionSignature', type: 'bytes' }
+    ]
 
-          const nonce = await contract.getNonce(fromAddress)
+    const nonce = await contract.getNonce(fromAddress)
 
-          const message = {
-            nonce: nonce.toString(),
-            from: fromAddress,
-            functionSignature: approveHex.data
+    const message = {
+      nonce: nonce.toString(),
+      from: fromAddress,
+      functionSignature: approveHex.data
+    }
+    const dataToSign = JSON.stringify({
+      types: {
+        EIP712Domain: domainType,
+        MetaTransaction: metaTransactionType
+      },
+      domain: domainData,
+      primaryType: 'MetaTransaction',
+      message
+    })
+
+    return await new Promise<string>((resolve, reject) => {
+      metamaskRM.provider.sendAsync(
+        {
+          method: 'eth_signTypedData_v4',
+          params: [fromAddress, dataToSign],
+          jsonrpc: '2.0',
+          id: 999999999999
+        } satisfies RPCSendableMessage,
+        async (err: any, result: any) => {
+          if (err !== undefined) {
+            reject(err)
+            return
           }
-          const dataToSign = JSON.stringify({
-            types: {
-              EIP712Domain: domainType,
-              MetaTransaction: metaTransactionType
-            },
-            domain: domainData,
-            primaryType: 'MetaTransaction',
-            message
-          })
+          if (result !== undefined) notificationCB(lang.waitingServerResponse)
+          const contractAddress =
+            ContractConfig.getContractConfigByName('marketplace').address
 
-          metamaskRM.provider.sendAsync(
+          const res: Response = await fetch(
+            `https://meta-tx-server.dglive.org/v1/transactions`,
             {
-              method: 'eth_signTypedData_v4',
-              params: [fromAddress, dataToSign],
-              jsonrpc: '2.0',
-              id: 999999999999
-            } as RPCSendableMessage,
-            async (err: any, result: any) => {
-              if (err) {
-                reject(err)
-                return
-              }
-              if (result) notificationCB(lang.waitingServerResponse)
-              const contractAddress =
-                ContractConfig.getContractConfigByName('marketplace').address
-
-              const res: Response = await fetch(
-                `https://meta-tx-server.dglive.org/v1/transactions`,
-                {
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    transactionData: {
-                      from: fromAddress,
-                      params: [
-                        contractAddress,
-                        getExecuteMetaTransactionData(
-                          fromAddress,
-                          result.result,
-                          approveHex.data
-                        )
-                      ]
-                    }
-                  }),
-                  method: 'POST'
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                transactionData: {
+                  from: fromAddress,
+                  params: [
+                    contractAddress,
+                    getExecuteMetaTransactionData(
+                      fromAddress,
+                      result.result,
+                      approveHex.data
+                    )
+                  ]
                 }
-              )
-              if (!res.ok) {
-                throw new Error(res.statusText)
-              }
-              const parsedResponse = await res.json()
-              const { txHash } = parsedResponse as { txHash: string }
-              resolve(txHash)
+              }),
+              method: 'POST'
             }
           )
+          if (!res.ok) {
+            throw new Error(res.statusText)
+          }
+          const parsedResponse = await res.json()
+          const { txHash } = parsedResponse as { txHash: string }
+          resolve(txHash)
         }
       )
     })
@@ -125,8 +125,8 @@ type domainDataType = {
   verifyingContract: string
 }
 export const getDomainData = (): [
-  domainData: domainDataType,
-  domainType: Array<{ name: string; type: string }>
+  domainDataType,
+  Array<{ name: string; type: string }>
 ] => {
   const domainData =
     ContractConfig.getContractConfigByName('marketplace').domain
@@ -146,7 +146,7 @@ export const getDomainData = (): [
   //   { name: 'chainId', type: 'uint256' },
   //   { name: 'verifyingContract', type: 'address' }
   // ]
-  domain: return [domainData, domainType]
+  return [domainData, domainType]
 }
 
 /**
@@ -157,8 +157,11 @@ export const getDomainData = (): [
 export async function getContract(
   contractAddress: eth.Address,
   requestManager?: eth.RequestManager
-) {
-  if (!requestManager) {
+): Promise<{
+  contract: any
+  requestManager: eth.RequestManager
+}> {
+  if (requestManager === undefined) {
     const provider = createEthereumProvider()
     requestManager = new eth.RequestManager(provider)
   }

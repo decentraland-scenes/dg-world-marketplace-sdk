@@ -3,7 +3,7 @@ import * as components from '@dcl/sdk/ecs'
 
 import DgWorldMarketplace from './lib/dgWorldMarketplace'
 
-export function initLibrary(engine: IEngine) {
+export function initLibrary(engine: IEngine): void {
   console.log('asdikaosmdoia')
   components.MeshRenderer.create(engine.addEntity())
 }

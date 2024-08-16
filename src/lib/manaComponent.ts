@@ -23,7 +23,7 @@ export const createMANAComponent = ({
   isApproved: (spenderAddress: string) => Promise<number>
   approve: (spenderAddress: string, amount?: number) => Promise<string>
 } => {
-  const balance = async () => {
+  const balance = async (): Promise<string> => {
     try {
       const bagContractAddress =
         ContractConfig.getContractConfigByName('bag').address
@@ -56,46 +56,46 @@ export const createMANAComponent = ({
   }
 
   const approve = async (spender: string): Promise<string> => {
-    return await new Promise(async (resolve, reject) => {
-      const fromAddress = await getUserAddress()
-      const provider = createEthereumProvider()
-      const metamaskRM = new RequestManager(provider)
-      const bagContractAddress =
-        ContractConfig.getContractConfigByName('bag').address
-      const { contract } = await getContract(
-        bagContractAddress,
-        metaRequestManager
-      )
-      const approveHex = await contract.approve.toPayload(
-        spender,
-        '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'
-      )
-      const [domainData, domainType] = getDomainData()
+    const fromAddress = await getUserAddress()
+    const provider = createEthereumProvider()
+    const metamaskRM = new RequestManager(provider)
+    const bagContractAddress =
+      ContractConfig.getContractConfigByName('bag').address
+    const { contract } = await getContract(
+      bagContractAddress,
+      metaRequestManager
+    )
+    const approveHex = await contract.approve.toPayload(
+      spender,
+      '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'
+    )
+    const [domainData, domainType] = getDomainData()
 
-      const metaTransactionType = [
-        { name: 'nonce', type: 'uint256' },
-        { name: 'from', type: 'address' },
-        { name: 'functionSignature', type: 'bytes' }
-      ]
+    const metaTransactionType = [
+      { name: 'nonce', type: 'uint256' },
+      { name: 'from', type: 'address' },
+      { name: 'functionSignature', type: 'bytes' }
+    ]
 
-      const nonce = await contract.getNonce(fromAddress)
+    const nonce = await contract.getNonce(fromAddress)
 
-      const message = {
-        nonce: nonce.toString(),
-        from: fromAddress,
-        functionSignature: approveHex.data
-      }
+    const message = {
+      nonce: nonce.toString(),
+      from: fromAddress,
+      functionSignature: approveHex.data
+    }
 
-      const dataToSign = JSON.stringify({
-        types: {
-          EIP712Domain: domainType,
-          MetaTransaction: metaTransactionType
-        },
-        domain: domainData,
-        primaryType: 'MetaTransaction',
-        message
-      })
+    const dataToSign = JSON.stringify({
+      types: {
+        EIP712Domain: domainType,
+        MetaTransaction: metaTransactionType
+      },
+      domain: domainData,
+      primaryType: 'MetaTransaction',
+      message
+    })
 
+    return await new Promise((resolve, reject) => {
       metamaskRM.provider.sendAsync(
         {
           method: 'eth_signTypedData_v4',
@@ -103,9 +103,9 @@ export const createMANAComponent = ({
           params: [fromAddress, dataToSign],
           jsonrpc: '2.0',
           id: 999999999999
-        } as RPCSendableMessage,
+        } satisfies RPCSendableMessage,
         async (err: any, result: any) => {
-          if (err) {
+          if (err !== undefined) {
             console.log(err)
 
             reject(err)
@@ -186,22 +186,16 @@ export const getContract = async (
   contract: any
   requestManager: RequestManager
 }> => {
-  return await new Promise(async (resolve, reject) => {
-    try {
-      const bagAbi = ContractConfig.getContractConfigByName('bag').abi
-      const factory = new ContractFactory(requestManager, bagAbi)
-      const contract = await factory.at(contractAddress)
-      resolve({ contract, requestManager })
-    } catch (err) {
-      reject(err)
-    }
-  })
+  const bagAbi = ContractConfig.getContractConfigByName('bag').abi
+  const factory = new ContractFactory(requestManager, bagAbi)
+  const contract = await factory.at(contractAddress)
+  return { contract, requestManager }
 }
 
 /**
  * Return DomainData
  */
-export function getDomainData() {
+export function getDomainData(): [any, any] {
   const domainType = ContractConfig.getContractConfigByName('bag').domainType
   const domainData = ContractConfig.getContractConfigByName('bag').domain
   return [domainData, domainType]

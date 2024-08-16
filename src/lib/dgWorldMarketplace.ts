@@ -1137,25 +1137,25 @@ export default class DgWorldMarketplace extends EventEmitter {
       const intervalId = code
       this.intervals[intervalId] = new LoopSystem(15, () => {
         executeTask(async () => {
-          const paymentResult: any = await this.get(
-            `/coinbase/payment-status?code=` + code
-          )
-          console.log('paymentResult: ', paymentResult)
-          if (paymentResult.data.payments.length) {
-            const paymentConfirmed = paymentResult.data.payments.find(
-              (x: any) => x.status === 'CONFIRMED'
-            )
-            if (paymentConfirmed) {
-              // TODO
-              // engine.removeSystem(this.intervals[intervalId]);
-              delete this.intervals[intervalId]
-              // TODO
-              // this.purchaseModal.notification(
-              //   this.lang.buyWithCoinbase,
-              //   this.lang.coinbasePaymentConfirmed
-              // );
-            }
-          }
+          // const paymentResult: any = await this.get(
+          //   `/coinbase/payment-status?code=` + code
+          // )
+          // console.log('paymentResult: ', paymentResult)
+          // if (paymentResult.data.payments.length) {
+          //   const paymentConfirmed = paymentResult.data.payments.find(
+          //     (x: any) => x.status === 'CONFIRMED'
+          //   )
+          //   if (paymentConfirmed) {
+          //     // TODO
+          //     // engine.removeSystem(this.intervals[intervalId]);
+          //     delete this.intervals[intervalId]
+          //     // TODO
+          //     // this.purchaseModal.notification(
+          //     //   this.lang.buyWithCoinbase,
+          //     //   this.lang.coinbasePaymentConfirmed
+          //     // );
+          //   }
+          // }
         })
       })
       // TODO

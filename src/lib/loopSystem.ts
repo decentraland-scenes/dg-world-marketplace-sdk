@@ -2,7 +2,7 @@ export class LoopSystem {
   private readonly targetTime: number = 0
   private timer: number = 0
   public id: number = 0
-  cb = () => {}
+  cb = (): void => {}
   constructor(timer: number, cb: () => void) {
     this.targetTime = timer
     this.timer = timer
@@ -10,7 +10,7 @@ export class LoopSystem {
     return this
   }
 
-  update(dt: number) {
+  update(dt: number): void {
     if (this.timer > 0) {
       this.timer -= dt
     } else {
