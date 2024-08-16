@@ -831,7 +831,6 @@ export default class DgWorldMarketplace extends EventEmitter {
     this.selectedNftAddress = nftAddress
     this.selectedTokenId = tokenId
     this.selectedResourceId = resourceId
-    // TODO
     this.purchaseModal.openModal({
       nftImagePath: imageUrl,
       nftTitle: title,
@@ -906,8 +905,8 @@ export default class DgWorldMarketplace extends EventEmitter {
       ) {
         const validateBackendWallet = await this.validateBackendWallet(price)
         if (validateBackendWallet) {
+          this.purchaseModal.hideNotifications()
           // TODO
-          // this.purchaseModal.notificationContainer.visible = false;
           // const paymentMethodNotAvailable = new ui.CustomPrompt(
           //   "dark",
           //   undefined,
@@ -1003,8 +1002,7 @@ export default class DgWorldMarketplace extends EventEmitter {
   }
 
   private readonly buyNotidicationCb = async (text: string): Promise<void> => {
-    // TODO
-    // this.purchaseModal.notification(this.lang.buyWithBag, text);
+    this.purchaseModal.notification(this.lang.buyWithBag, text);
   }
 
   private readonly buyWithBag = async (
@@ -1017,36 +1015,32 @@ export default class DgWorldMarketplace extends EventEmitter {
     // this.currentPrompt = custom;
 
     if (this.store == null) {
-      // TODO
-      // this.purchaseModal.notification(
-      //   this.lang.buyWithBag,
-      //   this.lang.purchaseFailed
-      // );
+      this.purchaseModal.notification(
+        this.lang.buyWithBag,
+        this.lang.purchaseFailed
+      );
       return
     }
 
     if (!(await this.isNftAvailable())) {
-      // TODO
-      // this.purchaseModal.notification(
-      //   this.lang.buyWithBag,
-      //   this.lang.nftNotAvailable
-      // );
+      this.purchaseModal.notification(
+        this.lang.buyWithBag,
+        this.lang.nftNotAvailable
+      );
       return
     }
     try {
-      // TODO
-      // this.purchaseModal.notification(
-      //   this.lang.buyWithBag,
-      //   this.lang.buyingNFT
-      // );
+      this.purchaseModal.notification(
+        this.lang.buyWithBag,
+        this.lang.buyingNFT
+      );
       await this.store.buy(nftAddress, [tokenId], tokenPrice, (text) => {
         void this.buyNotidicationCb(text)
       })
-      // TODO
-      // this.purchaseModal.notification(
-      //   this.lang.buyWithBag,
-      //   this.lang.purchaseFailed
-      // );
+      this.purchaseModal.notification(
+        this.lang.buyWithBag,
+        this.lang.purchaseFailed
+      );
     } catch (err: any) {
       let message = ''
       if (err?.message !== undefined) {
@@ -1061,10 +1055,8 @@ export default class DgWorldMarketplace extends EventEmitter {
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         message = this.lang.genericError
       }
-      // TODO
-      // this.purchaseModal.resetModal();
-      // this.purchaseModal.notification(this.lang.buyWithBag, message);
-      // custom.show()
+      this.purchaseModal.resetModal();
+      this.purchaseModal.notification(this.lang.buyWithBag, message);
       this.onError(err)
       this.debug && console.log(err)
     }
@@ -1076,34 +1068,29 @@ export default class DgWorldMarketplace extends EventEmitter {
     resourceId: string
   ): Promise<void> {
     if (!(await this.isNftAvailable())) {
-      // TODO
-      // this.purchaseModal.notification(
-      //   this.lang.buyWithBinance,
-      //   this.lang.nftNotAvailable
-      // );
+      this.purchaseModal.notification(
+        this.lang.buyWithBinance,
+        this.lang.nftNotAvailable
+      );
       return
     }
     const params = `?nftAddress=${nftAddress}&tokenId=${tokenId}&resourceId=${resourceId}&buyerAddress=${this.fromAddress}&currency=USDT`
-    // TODO
-    // this.purchaseModal.notification(
-    //   this.lang.buyWithBinance,
-    //   this.lang.generatingPaymentLinkAndQR
-    // );
+    this.purchaseModal.notification(
+      this.lang.buyWithBinance,
+      this.lang.generatingPaymentLinkAndQR
+    );
     const binanceRes: any = await this.get(`/binance/payment-link` + params)
 
     if (binanceRes?.status === 200) {
-      // TODO
-      // this.purchaseModal.toggleModals();
-      // const qrJpg = binanceRes.data.qrcodeLink
-      // const paymentLink = binanceRes.data.checkoutUrl
-      // TODO
-      // this.purchaseModal.showQrAndUrl(qrJpg, paymentLink);
+      this.purchaseModal.toggleModals();
+      const qrJpg = binanceRes.data.qrcodeLink
+      const paymentLink = binanceRes.data.checkoutUrl
+      this.purchaseModal.showQrAndUrl(qrJpg, paymentLink);
     } else {
-      // TODO
-      // this.purchaseModal.notification(
-      //   this.lang.buyWithBinance,
-      //   this.lang.genericError
-      // );
+      this.purchaseModal.notification(
+        this.lang.buyWithBinance,
+        this.lang.genericError
+      );
     }
   }
 
@@ -1113,27 +1100,22 @@ export default class DgWorldMarketplace extends EventEmitter {
     resourceId: string
   ): Promise<void> {
     if (!(await this.isNftAvailable())) {
-      // TODO
-      // this.purchaseModal.notification(
-      //   this.lang.buyWithCoinbase,
-      //   this.lang.nftNotAvailable
-      // );
+      this.purchaseModal.notification(
+        this.lang.buyWithCoinbase,
+        this.lang.nftNotAvailable
+      );
       return
     }
     const params = `?nftAddress=${nftAddress}&tokenId=${tokenId}&resourceId=${resourceId}&buyerAddress=${this.fromAddress}&currency=USDT`
-    // TODO
-    // this.purchaseModal.notification(
-    //   this.lang.buyWithCoinbase,
-    //   this.lang.generatingPaymentLink
-    // );
+    this.purchaseModal.notification(
+      this.lang.buyWithCoinbase,
+      this.lang.generatingPaymentLink
+    );
     const coinbaseRes: any = await this.get(`/coinbase/payment-link` + params)
     if (coinbaseRes?.status === 200) {
-      // TODO
-      // this.purchaseModal.toggleModals();
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      this.purchaseModal.toggleModals();
       const { hosted_url: paymentLink, code } = coinbaseRes.data
-      // TODO
-      // this.purchaseModal.showQrAndUrl(undefined, paymentLink);
+      this.purchaseModal.showQrAndUrl(undefined, paymentLink);
       const intervalId = code
       this.intervals[intervalId] = new LoopSystem(15, () => {
         executeTask(async () => {
@@ -1161,11 +1143,10 @@ export default class DgWorldMarketplace extends EventEmitter {
       // TODO
       // engine.addSystem(this.intervals[intervalId]);
     } else {
-      // TODO
-      // this.purchaseModal.notification(
-      //   this.lang.buyWithCoinbase,
-      //   this.lang.genericError
-      // );
+      this.purchaseModal.notification(
+        this.lang.buyWithCoinbase,
+        this.lang.genericError
+      );
     }
   }
 
@@ -1175,34 +1156,29 @@ export default class DgWorldMarketplace extends EventEmitter {
     resourceId: string
   ): Promise<void> {
     if (!(await this.isNftAvailable())) {
-      // TODO
-      // this.purchaseModal.notification(
-      //   this.lang.buyWithPaper,
-      //   this.lang.nftNotAvailable
-      // );
+      this.purchaseModal.notification(
+        this.lang.buyWithPaper,
+        this.lang.nftNotAvailable
+      );
       return
     }
     const params = `?nftAddress=${nftAddress}&tokenId=${tokenId}&resourceId=${resourceId}&buyerAddress=${this.fromAddress}&currency=USDT`
-    // TODO
-    // this.purchaseModal.notification(
-    //   this.lang.buyWithPaper,
-    //   this.lang.generatingPaymentLink
-    // );
+    this.purchaseModal.notification(
+      this.lang.buyWithPaper,
+      this.lang.generatingPaymentLink
+    );
     const paperRes: any = await this.get(`/paper/payment-link` + params)
     // TODO
     // this.toggleLoader(false)
     if (paperRes?.status === 200) {
-      // TODO
-      // this.purchaseModal.toggleModals();
-      // const paymentLink = paperRes.data
-      // TODO
-      // this.purchaseModal.showQrAndUrl(undefined, paymentLink);
+      this.purchaseModal.toggleModals();
+      const paymentLink = paperRes.data
+      this.purchaseModal.showQrAndUrl(undefined, paymentLink);
     } else {
-      // TODO
-      // this.purchaseModal.notification(
-      //   this.lang.buyWithPaper,
-      //   this.lang.genericError
-      // );
+      this.purchaseModal.notification(
+        this.lang.buyWithPaper,
+        this.lang.genericError
+      );
     }
   }
 
@@ -1395,25 +1371,23 @@ export default class DgWorldMarketplace extends EventEmitter {
   }
 
   private onEvent(ev: any): void {
-    // TODO
-    // if (this.purchaseModal.notifyOnEvent) {
-    //   const data = typeof ev.data === "string" ? JSON.parse(ev.data) : ev.data;
-    //   const { address, status, type, transactionHash, message } = data;
-    //   if (type === "buy") {
-    //     if (status === "refund")
-    //       this.purchaseModal.notification(
-    //         this.lang.purchaseRefunded,
-    //         message + " txHash: " + transactionHash
-    //       );
-    //     // else this.purchaseModal.notification('', this.lang.purchaseSucceed + ' txHash: ' + transactionHash)
-    //     else this.purchaseModal.notification("", this.lang.purchaseSucceed);
-    //   } else if (type === "cancel") {
-    //     this.purchaseModal.notification(
-    //       this.lang.listingCanceled,
-    //       "txHash: " + transactionHash
-    //     );
-    //   }
-    // }
+    if (this.purchaseModal.notifyOnEvent) {
+      const data = typeof ev.data === "string" ? JSON.parse(ev.data) : ev.data;
+      const { status, type, transactionHash, message } = data;
+      if (type === "buy") {
+        if (status === "refund")
+          this.purchaseModal.notification(
+            this.lang.purchaseRefunded,
+            message + " txHash: " + transactionHash
+          );
+        else this.purchaseModal.notification("", this.lang.purchaseSucceed);
+      } else if (type === "cancel") {
+        this.purchaseModal.notification(
+          this.lang.listingCanceled,
+          "txHash: " + transactionHash
+        );
+      }
+    }
   }
 
   private toggleLoader(show: boolean = true): void {

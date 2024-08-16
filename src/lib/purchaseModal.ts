@@ -691,6 +691,8 @@ type OpenModalProps = {
 }
 
 export default class PurchaseModal {
+  public notifyOnEvent: boolean = true
+
   public openModal(props: OpenModalProps): void {
     // const {
     //     nftImagePath,
@@ -706,4 +708,25 @@ export default class PurchaseModal {
     //     balance,
     // } = props
   }
+
+  public resetModal(): void {
+
+  }
+
+  public toggleModals(showNotification: boolean = false): void {
+  
+  }
+
+  public showQrAndUrl(qr?: string, url?: string): void {
+
+  }
+
+  public notification(title: string, text: string): void {
+
+  }
+
+  public hideNotifications(): void {
+
+  }
+
 }
