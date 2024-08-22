@@ -11,9 +11,9 @@
     "link-sdk": "cd node_modules/@dcl/sdk && npm link && cd ../js-runtime && npm link"
   },
   "devDependencies": {
-    "@dcl/js-runtime": "7.3.36",
+    "@dcl/js-runtime": "7.5.6",
     "@dcl/sdk": "latest",
-    "dg-marketplace-world-skd7-migrated": ".."
+    "dg-marketplace-world-skd7-migrated": "file:.."
   },
   "engines": {
     "node": ">=16.0.0",

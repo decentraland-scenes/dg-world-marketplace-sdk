@@ -1,18 +1,29 @@
-import { executeTask, type Entity, type IEngine } from '@dcl/sdk/ecs'
+import {
+  AvatarShape,
+  engine,
+  executeTask,
+  Material,
+  MeshCollider,
+  MeshRenderer,
+  pointerEventsSystem,
+  Transform,
+  VideoPlayer,
+  type Entity
+} from '@dcl/sdk/ecs'
 import { createEthereumProvider } from '@dcl/sdk/ethereum-provider'
-
+import { Color3, Color4, Quaternion, Vector3 } from '@dcl/sdk/math'
 import { LoopSystem } from './loopSystem'
 
 import { fromWei, HTTPProvider, RequestManager } from 'eth-connect'
 import { config } from '../config/index'
 import {
+  Network,
   type BackendBalance,
   type Banner,
   type JoystickBannerData,
   type JoystickSlotData,
   type LangText,
   type MarketplaceOptions,
-  Network,
   type NftData,
   type NftDataOptions,
   type NftWearableOptions,
@@ -27,14 +38,22 @@ import { getUserAddress } from '../util/wallet'
 import contractConfig from './contractConfig'
 import { EventEmitter } from './eventEmitter'
 import { createMANAComponent } from './manaComponent'
-import { createStoreComponent } from './storeComponent'
 import PurchaseModal from './purchaseModal'
+import { createStoreComponent } from './storeComponent'
+import ReactEcs, { UiEntity } from '@dcl/sdk/react-ecs'
+import Canvas from '../util/canvas/Canvas'
+import { waitNextTick } from '../util/engine'
 
 export enum BuySelection {
   BAG,
   Coinbase,
   Binance,
   Paper
+}
+
+type PlaneShapeData = Slot & {
+  entityScale: { x: number; y: number; z: number }
+  entityRotation: Quaternion
 }
 
 type IMANAComponent = {
@@ -81,13 +100,21 @@ type IDashboardSlot = {
   wallet: string
 }
 
+type DgWorldMarketplaceEvents = {
+  error: unknown
+  web3Ready: unknown
+  websocketsReady: unknown
+  variablesReady: unknown
+  // eslint-disable-next-line @typescript-eslint/no-invalid-void-type
+  ready: void
+}
+
 /**
  * @public
  * This is a public DgWorldMarketplace
  */
-export default class DgWorldMarketplace extends EventEmitter {
+export default class DgWorldMarketplace extends EventEmitter<DgWorldMarketplaceEvents> {
   public slots: Slot[] = []
-  private readonly engine: IEngine
   private readonly previewEnv: string = 'dev'
   private readonly network: string = 'MATIC'
   private provider: Provider | null = null
@@ -116,10 +143,9 @@ export default class DgWorldMarketplace extends EventEmitter {
   private selectedTokenId: string = ''
   private selectedResourceId: string = ''
   // private loader: ui.LoadingIcon | null = null;
-  private readonly zoneId: number | null = null
+  private readonly zoneId: number = 0
   private readonly lang: LangText = en
-  private readonly debug: boolean = false
-  // private successEventPrompt: ui.OkPrompt;
+  private readonly DEBUG_MODE: boolean = false
   private banners: Banner[] = []
   private variables: Variable[] = []
   private readonly inViewBanners: Record<string, { entity: Entity }> = {}
@@ -142,6 +168,7 @@ export default class DgWorldMarketplace extends EventEmitter {
 
   constructor(options: MarketplaceOptions) {
     super()
+    console.log('my test id is 383')
     if (
       options.slots !== undefined &&
       options.slots?.length > 0 &&
@@ -158,42 +185,37 @@ export default class DgWorldMarketplace extends EventEmitter {
     }
     if (options.zoneId !== undefined) this.zoneId = options.zoneId
     // https://business.dglive.org/api/getAllMarketSlots/54
-    if (options.engine === undefined) throw new Error('Engine is required')
-    this.engine = options.engine
     if (options.previewEnv != null) this.previewEnv = options.previewEnv
     if (options.network !== undefined) this.network = options.network
     if (options.lang !== undefined) this.lang = { ...en, ...options.lang }
-    this.debug = options.debug ?? false
-
-    // TODO
-    // if (options.canvas) this.canvas = options.canvas;
-    // else {
-    //   const prompt = new ui.CustomPrompt(ui.PromptStyles.DARK, 600, 300, true);
-    //   this.canvas = prompt.canvas;
-    //   this.canvas.visible = false;
-    // }
-    // this.canvas.visible = true;
-
-    this.purchaseModal = new PurchaseModal()
-    // this.purchaseModal = new PurchaseModal({
-    //   onBuyCB: this.buyModalCb.bind(this),
-    //   lang: this.lang,
-    //   canvas: this.canvas,
-    // });
-    // this.loader = new ui.LoadingIcon(undefined, 0, -80);
-    // this.loader.hide();
-    // this.successEventPrompt = new ui.OkPrompt(
-    //   "Success - txHash: \n xxx",
-    //   undefined,
-    //   "Ok",
-    //   true
-    // );
-    // this.successEventPrompt.hide();
+    this.DEBUG_MODE = options.debug ?? false
+    this.purchaseModal = new PurchaseModal({
+      onBuyCB: this.buyModalCb.bind(this),
+      lang: this.lang
+    })
 
     void this.initDGMarketplace()
   }
 
+  render(): ReactEcs.JSX.Element {
+    return (
+      <UiEntity>
+        <Canvas
+          uiTransform={{
+            justifyContent: 'center',
+            alignItems: 'center'
+          }}
+        >
+          <UiEntity uiText={{ value: 'Hello dg library!', fontSize: 24 }} />
+        </Canvas>
+
+        {this.purchaseModal.render()}
+      </UiEntity>
+    )
+  }
+
   private onError(err: any): void {
+    console.error(err)
     this.emit('error', err)
   }
 
@@ -206,8 +228,11 @@ export default class DgWorldMarketplace extends EventEmitter {
       await this.getBannersData()
       this.emit('variablesReady')
       await this.setBanners()
-      if (this.slots.length > 0) await this.setSlots(this.slots)
-      else await this.fetchSlots()
+      if (this.slots.length > 0) {
+        await this.setSlots(this.slots)
+      } else {
+        await this.fetchSlots()
+      }
       await this.checkAllowance()
       this.emit('ready')
     } catch (err) {
@@ -229,57 +254,56 @@ export default class DgWorldMarketplace extends EventEmitter {
   }
 
   private async setBanners(): Promise<void> {
+    console.log('setBanners::this.banners', this.banners)
     try {
-      // TODO
-      // for (const banner of this.banners) {
-      // const {
-      //   position_x: px,
-      //   position_y: py,
-      //   position_z: pz,
-      //   rotation_x,
-      //   rotation_y,
-      //   rotation_z,
-      //   size_x,
-      //   size_y,
-      //   size_z,
-      //   media_url: imageUrl,
-      //   id: idBanner
-      // } = banner
-      //   const bannerEntity = new Entity();
-      //   const planeShape = new PlaneShape();
-      //   bannerEntity.addComponent(planeShape);
-      //   if (this.getBannerType(imageUrl) === "video") {
-      //     const videoMaterial = new Material();
-      //     const videoBanner = new VideoClip(imageUrl);
-      //     const videoTexture = new VideoTexture(videoBanner);
-      //     videoMaterial.albedoTexture = videoTexture;
-      //     bannerEntity.addComponent(videoMaterial);
-      //     videoTexture.playing = true;
-      //     videoTexture.play();
-      //     videoTexture.loop = true;
-      //     videoTexture.volume = 0;
-      //     engine.addEntity(bannerEntity);
-      //   } else {
-      //     const planeMaterial = new BasicMaterial();
-      //     //Logica de banner que es imagen
-      //     const imageTexture = new Texture(imageUrl, {
-      //       wrap: 1,
-      //       samplingMode: 0,
-      //     });
-      //     planeMaterial.texture = imageTexture;
-      //     planeShape.withCollisions = true;
-      //     bannerEntity.addComponent(planeMaterial);
-      //   }
-      //   bannerEntity.addComponent(
-      //     new Transform({
-      //       position: new Vector3(+px, +py, +pz),
-      //       scale: new Vector3(+size_x, +size_y, +size_z),
-      //       rotation: Quaternion.Euler(+rotation_x, +rotation_y, +rotation_z),
-      //     })
-      //   );
-      //   this.inViewBanners[idBanner] = { entity: bannerEntity };
-      //   this.engine.addEntity(bannerEntity);
-      // }
+      for (const [, banner] of this.banners.entries()) {
+        const {
+          position_x: px,
+          position_y: py,
+          position_z: pz,
+          rotation_x: rx,
+          rotation_y: ry,
+          rotation_z: rz,
+          size_x: sx,
+          size_y: sy,
+          size_z: sz,
+          media_url: imageUrl,
+          id: idBanner
+        } = banner
+
+        const bannerEntity = engine.addEntity()
+        MeshRenderer.setPlane(bannerEntity)
+        MeshCollider.setPlane(bannerEntity)
+
+        if (this.getBannerType(imageUrl) === 'video') {
+          const bannerVideoEntity = engine.addEntity()
+          VideoPlayer.create(bannerVideoEntity, {
+            src: imageUrl,
+            playing: true,
+            volume: 0,
+            loop: true
+          })
+          Material.setPbrMaterial(bannerEntity, {
+            texture: Material.Texture.Video({
+              videoPlayerEntity: bannerVideoEntity
+            })
+          })
+        } else {
+          Material.setPbrMaterial(bannerEntity, {
+            texture: Material.Texture.Common({
+              src: imageUrl
+            })
+          })
+        }
+
+        Transform.create(bannerEntity, {
+          position: Vector3.create(+px, +py, +pz),
+          scale: Vector3.create(+sx, +sy, +sz),
+          rotation: Quaternion.fromEulerDegrees(+rx, +ry, +rz)
+        })
+
+        this.inViewBanners[idBanner] = { entity: bannerEntity }
+      }
     } catch (err) {
       console.log('setBanners err', err)
       this.onError(err)
@@ -314,7 +338,7 @@ export default class DgWorldMarketplace extends EventEmitter {
         await this.fetchSlotsData(slots)
       }
     } catch (err) {
-      this.debug && console.log('fetchSlots err', err)
+      this.DEBUG_MODE && console.log('fetchSlots err', err)
       throw err
     }
   }
@@ -346,7 +370,7 @@ export default class DgWorldMarketplace extends EventEmitter {
       )
       const slotData = slotRawData
         .filter((x) => {
-          return x.data !== undefined
+          return x.data !== undefined && x.data !== null
         })
         .map((item: any) => item.data)
       const res: Slot[] = []
@@ -438,229 +462,216 @@ export default class DgWorldMarketplace extends EventEmitter {
 
   async setSlots(slots: Slot[]): Promise<void> {
     try {
-      // TODO
-      // for (const slot of slots) {
-      //   const {
-      //     position,
-      //     scale,
-      //     rotation,
-      //     nftAddress,
-      //     tokenId,
-      //     price,
-      //     resourceId,
-      //     imageUrl,
-      //     id: idSlot,
-      //     name,
-      //     height,
-      //     width,
-      //     audioUrl,
-      //     animationUrl,
-      //     youtubeUrl,
-      //   } = slot;
-      //   const planeShapeData: any = { ...slot };
-      //   const { x: px, y: py, z: pz } = position;
-      //   const entityScale: { x: number; y: number; z: number } = {
-      //     x: 1,
-      //     y: 1,
-      //     z: 1,
-      //   };
-      //   planeShapeData["entityScale"] = entityScale;
-      //   let entityRotation: any = null;
-      //   if (!!scale.all) {
-      //     entityScale.x = scale.all;
-      //     entityScale.y = scale.all;
-      //     entityScale.z = scale.all; // new Vector3().setAll(scale.all)
-      //   } else if (!!scale.x && !!scale.y && !!scale.z) {
-      //     entityScale.x = scale.x;
-      //     entityScale.y = scale.y;
-      //     entityScale.z = scale.z;
-      //   }
-      //   const { x: rx = 0, y: ry = 0, z: rz = 0 } = rotation;
-      //   entityRotation = Quaternion.fromEulerDegrees(rx, ry, rz);
-      //   planeShapeData["entityRotation"] = entityRotation;
-      //   if (slot.isWearable) {
-      //     let nftData: any;
-      //     try {
-      //       nftData = (await this.fetchNftData({
-      //         nftAddress,
-      //         tokenId,
-      //       })) as any;
-      //     } catch (error) {
-      //       console.log(error);
-      //       await this.setPlaneShape(planeShapeData);
-      //     }
-      //     if (!nftData) continue;
-      //     // const imageUrl: string = nftData?.data[0]?.nft?.image
-      //     const title: string = nftData?.data[0]?.nft?.name;
-      //     const urn = await this.generateNftUrn({
-      //       nftAddress,
-      //       tokenId,
-      //       itemId: nftData.data[0].nft.itemId,
-      //     });
-      //     if (!urn) throw new Error("Could not generate urn for nft");
-      //     const wearable = await this.fetchWearables(urn);
-      //     if (!wearable?.length) {
-      //       void this.setPlaneShape(planeShapeData);
-      //       continue;
-      //     }
-      //     const {
-      //       id,
-      //       name,
-      //       data: { representations },
-      //     } = wearable[0];
-      //     const avatarShape = new AvatarShape();
-      //     const nftEntity = new Entity();
-      //     avatarShape.name = name;
-      //     avatarShape.bodyShape = representations[0].bodyShapes[0];
-      //     avatarShape.wearables = [id];
-      //     const red = 0.843;
-      //     const green = 0.333;
-      //     const blue = 0.4;
-      //     avatarShape.skinColor = new Color4(red, green, blue, 0.5);
-      //     nftEntity.addComponent(
-      //       new Transform({
-      //         position: new Vector3(+px, +py, +pz),
-      //         scale: new Vector3(entityScale.x, entityScale.y, entityScale.z),
-      //         rotation: entityRotation,
-      //       })
-      //     );
-      //     nftEntity.addComponent(avatarShape);
-      //     const nftWrapper = new Entity();
-      //     // nftWrapper.setParent(nftEntity)
-      //     const avatarShapeContainer = new CylinderShape();
-      //     avatarShapeContainer.radiusTop = 0.5;
-      //     avatarShapeContainer.radiusBottom = 0.5;
-      //     avatarShapeContainer.withCollisions = false;
-      //     avatarShapeContainer.segmentsHeight = 3;
-      //     nftWrapper.addComponent(avatarShapeContainer);
-      //     const posYFix = +py + +entityScale.y;
-      //     nftWrapper.addComponent(
-      //       new Transform({
-      //         // position: new Vector3(+px, posYFix, +pz),
-      //         position: new Vector3(+px, posYFix, +pz),
-      //         scale: new Vector3(
-      //           entityScale.x * 1.1,
-      //           entityScale.y * 1.1,
-      //           entityScale.z * 1.1
-      //         ),
-      //       })
-      //     );
-      //     nftWrapper.addComponent(
-      //       new OnPointerDown(
-      //         async (evt) => {
-      //           if (evt.buttonId === 1 || evt.buttonId === 2) return;
-      //           await this.buy({
-      //             nftAddress,
-      //             tokenId,
-      //             price,
-      //             imageUrl,
-      //             title,
-      //             resourceId,
-      //             width,
-      //             height,
-      //             audioUrl,
-      //             animationUrl,
-      //             youtubeUrl,
-      //           });
-      //         },
-      //         {
-      //           hoverText: `${this.lang.buyFor} ${price} BAG`,
-      //           // hoverText: `${this.lang.buyFor} ${fromWei(price, 'ether')} BAG`,
-      //           showFeedback: true,
-      //         }
-      //       )
-      //     );
-      //     const avatarShapeContainerMaterial = new Material();
-      //     avatarShapeContainerMaterial.albedoColor = new Color4(
-      //       0.5,
-      //       0.4,
-      //       0.6,
-      //       this.debug ? 0.65 : 0
-      //     );
-      //     this.inViewEntity[idSlot] = { entity: nftEntity, nftWrapper };
-      //     nftWrapper.addComponent(avatarShapeContainerMaterial);
-      //     this.engine.addEntity(nftEntity);
-      //     this.engine.addEntity(nftWrapper);
-      //   } else {
-      //     void this.setPlaneShape(planeShapeData);
-      //   }
-      // }
+      console.log('setSlots::slots', slots)
+      for (const slot of slots) {
+        const {
+          position,
+          scale,
+          rotation,
+          nftAddress,
+          tokenId,
+          price,
+          resourceId,
+          imageUrl,
+          id: idSlot,
+          // name,
+          height,
+          width,
+          audioUrl,
+          animationUrl,
+          youtubeUrl
+        } = slot
+        const { x: rx = 0, y: ry = 0, z: rz = 0 } = rotation
+        const { x: px, y: py, z: pz } = position
+        const planeShapeData: PlaneShapeData = {
+          ...slot,
+          entityScale:
+            scale.all !== undefined
+              ? { x: scale.all, y: scale.all, z: scale.all }
+              : { x: scale.x ?? 1, y: scale.y ?? 1, z: scale.z ?? 1 },
+          entityRotation: Quaternion.fromEulerDegrees(rx, ry, rz)
+        }
+
+        if (slot.isWearable) {
+          let nftData: any
+          try {
+            nftData = (await this.fetchNftData({
+              nftAddress,
+              tokenId
+            })) as any
+          } catch (error) {
+            console.log(error)
+            this.setPlaneShape(planeShapeData)
+          }
+          if (nftData === undefined || nftData === null) continue
+
+          const title: string = nftData?.data[0]?.nft?.name
+          const urn = await this.generateNftUrn({
+            nftAddress,
+            tokenId,
+            itemId: nftData.data[0].nft.itemId
+          })
+          if (urn === undefined || urn === null)
+            throw new Error('Could not generate urn for nft')
+
+          const wearable = await this.fetchWearables(urn)
+          if (wearable == null || wearable.length < 1) {
+            this.setPlaneShape(planeShapeData)
+            continue
+          }
+
+          const {
+            id,
+            name,
+            data: { representations }
+          } = wearable[0]
+
+          const nftEntity = engine.addEntity()
+
+          AvatarShape.create(nftEntity, {
+            id,
+            name,
+            bodyShape: representations[0].bodyShapes[0],
+            skinColor: Color3.create(0.843, 0.333, 0.4),
+            wearables: [id],
+            emotes: []
+          })
+
+          Transform.create(nftEntity, {
+            position: Vector3.create(+px, +py, +pz),
+            scale: planeShapeData.entityScale,
+            rotation: planeShapeData.entityRotation
+          })
+
+          const nftWrapperEntity = engine.addEntity()
+          MeshRenderer.setCylinder(nftWrapperEntity, 0.5, 0.5)
+          MeshCollider.setCylinder(nftWrapperEntity, 0.5, 0.5)
+
+          const posYFix = +py + +planeShapeData.entityScale.y
+          Transform.create(nftWrapperEntity, {
+            position: Vector3.create(+px, posYFix, +pz),
+            scale: Vector3.create(
+              planeShapeData.entityScale.x * 1.1,
+              planeShapeData.entityScale.y * 1.1,
+              planeShapeData.entityScale.z * 1.1
+            )
+          })
+
+          pointerEventsSystem.onPointerDown(
+            {
+              entity: nftWrapperEntity,
+              opts: {
+                hoverText: `${this.lang.buyFor} ${price} BAG`,
+                showFeedback: true
+              }
+            },
+            () => {
+              executeTask(async () => {
+                // TODO
+                // if (evt.buttonId === 1 || evt.buttonId === 2) return;
+                await this.buy({
+                  nftAddress,
+                  tokenId,
+                  price,
+                  imageUrl,
+                  title,
+                  resourceId,
+                  width,
+                  height,
+                  audioUrl,
+                  animationUrl,
+                  youtubeUrl
+                })
+              })
+            }
+          )
+
+          this.DEBUG_MODE &&
+            Material.setBasicMaterial(nftWrapperEntity, {
+              diffuseColor: Color4.create(0.5, 0.4, 0.6, 1.0)
+            })
+
+          this.inViewEntity[idSlot] = {
+            entity: nftEntity,
+            nftWrapper: nftWrapperEntity
+          }
+        } else {
+          this.setPlaneShape(planeShapeData)
+        }
+      }
     } catch (err) {
       console.log('setSlots::error', err)
       this.onError(err)
     }
   }
 
-  private async setPlaneShape(planeShapeData: any): Promise<void> {
-    // TODO
-    // const planeEntity = new Entity();
-    // const dummyEntity = new Entity();
-    // const {
-    //   position,
-    //   entityScale,
-    //   entityRotation,
-    //   nftAddress,
-    //   tokenId,
-    //   price,
-    //   imageUrl,
-    //   resourceId,
-    //   height,
-    //   width,
-    //   audioUrl,
-    //   animationUrl,
-    //   youtubeUrl,
-    //   name,
-    //   id: idSlot,
-    // } = planeShapeData;
-    // planeEntity.addComponent(
-    //   new Transform({
-    //     position: new Vector3(position.x, position.y, position.z),
-    //     scale: new Vector3(entityScale.x, entityScale.y, entityScale.z),
-    //     rotation: entityRotation,
-    //   })
-    // );
-    // const planeShape = new PlaneShape();
-    // planeEntity.addComponent(planeShape);
-    // // planeShape.height = 100
-    // // planeShape.width = 100
-    // planeShape.withCollisions = true;
-    // // const imageTexture = new Texture(imageUrl)
-    // // const planeMaterial = new Material()
-    // // planeMaterial.albedoTexture = imageTexture
-    // planeEntity.getComponentOrCreate(Material).albedoTexture = new Texture(
-    //   imageUrl
-    // );
-    // // planeEntity.addComponent(planeMaterial)
-    // planeEntity.addComponent(
-    //   new OnPointerDown(
-    //     async (evt) => {
-    //       if (evt.buttonId === 1 || evt.buttonId === 2) return;
-    //       await this.buy({
-    //         nftAddress,
-    //         tokenId,
-    //         price,
-    //         imageUrl,
-    //         title: name,
-    //         resourceId,
-    //         height,
-    //         width,
-    //         audioUrl,
-    //         animationUrl,
-    //         youtubeUrl,
-    //       });
-    //     },
-    //     {
-    //       hoverText: `${this.lang.buyFor} ${price} BAG`,
-    //       // hoverText: `${this.lang.buyFor} ${fromWei(price, 'ether')} BAG`,
-    //       showFeedback: true,
-    //     }
-    //   )
-    // );
-    // this.inViewEntity[idSlot] = {
-    //   entity: planeEntity,
-    //   nftWrapper: dummyEntity,
-    // };
-    // this.engine.addEntity(planeEntity);
+  private setPlaneShape(planeShapeData: PlaneShapeData): void {
+    const planeEntity = engine.addEntity()
+    const dummyEntity = engine.addEntity()
+    const {
+      position,
+      entityScale,
+      entityRotation,
+      nftAddress,
+      tokenId,
+      price,
+      imageUrl,
+      resourceId,
+      height,
+      width,
+      audioUrl,
+      animationUrl,
+      youtubeUrl,
+      name,
+      id: idSlot
+    } = planeShapeData
+
+    Transform.createOrReplace(planeEntity, {
+      position: Vector3.create(position.x, position.y, position.z),
+      scale: Vector3.create(entityScale.x, entityScale.y, entityScale.z),
+      rotation: entityRotation
+    })
+
+    MeshCollider.setPlane(planeEntity)
+    MeshRenderer.setPlane(planeEntity)
+    Material.setBasicMaterial(planeEntity, {
+      texture: Material.Texture.Common({ src: imageUrl })
+    })
+
+    pointerEventsSystem.onPointerDown(
+      {
+        entity: planeEntity,
+        opts: {
+          hoverText: `${this.lang.buyFor} ${price} BAG`,
+          showFeedback: true
+        }
+      },
+      (event) => {
+        // TODO THIS CHECK
+        // if (evt.buttonId === 1 || evt.buttonId === 2) return;
+
+        executeTask(async () => {
+          await this.buy({
+            nftAddress,
+            tokenId,
+            price,
+            imageUrl,
+            title: name,
+            resourceId,
+            height,
+            width,
+            audioUrl,
+            animationUrl,
+            youtubeUrl
+          })
+        })
+      }
+    )
+
+    this.inViewEntity[idSlot] = {
+      entity: planeEntity,
+      nftWrapper: dummyEntity
+    }
   }
 
   private async generateNftUrn(options: NftWearableOptions): Promise<string> {
@@ -714,9 +725,8 @@ export default class DgWorldMarketplace extends EventEmitter {
         throw new Error(`Wearables not found for urn="${urn}"`)
       }
       return wearables
-    } catch (error) {
-      // TODO
-      // this.onError('Not a wearable, will try as a plane shape: ' + error)
+    } catch (error: any) {
+      this.onError('Not a wearable, will try as a plane shape: ' + error)
       return null
     }
   }
@@ -896,7 +906,6 @@ export default class DgWorldMarketplace extends EventEmitter {
         price,
         sellerAddress
       }
-      // this.toggleLoader()
       if (this.mana == null) return
       const balance = fromWei(await this.mana.balance(), 'ether')
       if (
@@ -1002,7 +1011,7 @@ export default class DgWorldMarketplace extends EventEmitter {
   }
 
   private readonly buyNotidicationCb = async (text: string): Promise<void> => {
-    this.purchaseModal.notification(this.lang.buyWithBag, text);
+    this.purchaseModal.notification(this.lang.buyWithBag, text)
   }
 
   private readonly buyWithBag = async (
@@ -1018,7 +1027,7 @@ export default class DgWorldMarketplace extends EventEmitter {
       this.purchaseModal.notification(
         this.lang.buyWithBag,
         this.lang.purchaseFailed
-      );
+      )
       return
     }
 
@@ -1026,21 +1035,18 @@ export default class DgWorldMarketplace extends EventEmitter {
       this.purchaseModal.notification(
         this.lang.buyWithBag,
         this.lang.nftNotAvailable
-      );
+      )
       return
     }
     try {
-      this.purchaseModal.notification(
-        this.lang.buyWithBag,
-        this.lang.buyingNFT
-      );
+      this.purchaseModal.notification(this.lang.buyWithBag, this.lang.buyingNFT)
       await this.store.buy(nftAddress, [tokenId], tokenPrice, (text) => {
         void this.buyNotidicationCb(text)
       })
       this.purchaseModal.notification(
         this.lang.buyWithBag,
         this.lang.purchaseFailed
-      );
+      )
     } catch (err: any) {
       let message = ''
       if (err?.message !== undefined) {
@@ -1055,10 +1061,10 @@ export default class DgWorldMarketplace extends EventEmitter {
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         message = this.lang.genericError
       }
-      this.purchaseModal.resetModal();
-      this.purchaseModal.notification(this.lang.buyWithBag, message);
+      this.purchaseModal.resetModal()
+      this.purchaseModal.notification(this.lang.buyWithBag, message)
       this.onError(err)
-      this.debug && console.log(err)
+      this.DEBUG_MODE && console.log(err)
     }
   }
 
@@ -1071,26 +1077,26 @@ export default class DgWorldMarketplace extends EventEmitter {
       this.purchaseModal.notification(
         this.lang.buyWithBinance,
         this.lang.nftNotAvailable
-      );
+      )
       return
     }
     const params = `?nftAddress=${nftAddress}&tokenId=${tokenId}&resourceId=${resourceId}&buyerAddress=${this.fromAddress}&currency=USDT`
     this.purchaseModal.notification(
       this.lang.buyWithBinance,
       this.lang.generatingPaymentLinkAndQR
-    );
+    )
     const binanceRes: any = await this.get(`/binance/payment-link` + params)
 
     if (binanceRes?.status === 200) {
-      this.purchaseModal.toggleModals();
+      this.purchaseModal.toggleModals()
       const qrJpg = binanceRes.data.qrcodeLink
       const paymentLink = binanceRes.data.checkoutUrl
-      this.purchaseModal.showQrAndUrl(qrJpg, paymentLink);
+      this.purchaseModal.showQrAndUrl(qrJpg, paymentLink)
     } else {
       this.purchaseModal.notification(
         this.lang.buyWithBinance,
         this.lang.genericError
-      );
+      )
     }
   }
 
@@ -1103,50 +1109,55 @@ export default class DgWorldMarketplace extends EventEmitter {
       this.purchaseModal.notification(
         this.lang.buyWithCoinbase,
         this.lang.nftNotAvailable
-      );
+      )
       return
     }
     const params = `?nftAddress=${nftAddress}&tokenId=${tokenId}&resourceId=${resourceId}&buyerAddress=${this.fromAddress}&currency=USDT`
     this.purchaseModal.notification(
       this.lang.buyWithCoinbase,
       this.lang.generatingPaymentLink
-    );
+    )
     const coinbaseRes: any = await this.get(`/coinbase/payment-link` + params)
     if (coinbaseRes?.status === 200) {
-      this.purchaseModal.toggleModals();
+      this.purchaseModal.toggleModals()
       const { hosted_url: paymentLink, code } = coinbaseRes.data
-      this.purchaseModal.showQrAndUrl(undefined, paymentLink);
+      this.purchaseModal.showQrAndUrl(undefined, paymentLink)
       const intervalId = code
       this.intervals[intervalId] = new LoopSystem(15, () => {
         executeTask(async () => {
-          // const paymentResult: any = await this.get(
-          //   `/coinbase/payment-status?code=` + code
-          // )
-          // console.log('paymentResult: ', paymentResult)
-          // if (paymentResult.data.payments.length) {
-          //   const paymentConfirmed = paymentResult.data.payments.find(
-          //     (x: any) => x.status === 'CONFIRMED'
-          //   )
-          //   if (paymentConfirmed) {
-          //     // TODO
-          //     // engine.removeSystem(this.intervals[intervalId]);
-          //     delete this.intervals[intervalId]
-          //     // TODO
-          //     // this.purchaseModal.notification(
-          //     //   this.lang.buyWithCoinbase,
-          //     //   this.lang.coinbasePaymentConfirmed
-          //     // );
-          //   }
-          // }
+          const paymentResult: any = await this.get(
+            `/coinbase/payment-status?code=` + code
+          )
+          console.log('paymentResult: ', paymentResult)
+          if (paymentResult.data?.payments?.length > 0) {
+            const paymentConfirmed = paymentResult.data.payments.find(
+              (x: any) => x.status === 'CONFIRMED'
+            )
+            if (paymentConfirmed != null) {
+              engine.removeSystem(
+                this.intervals[intervalId].cb.bind(this.intervals[intervalId])
+              )
+
+              // This intervalId is already in the scope
+              // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+              delete this.intervals[intervalId]
+
+              this.purchaseModal.notification(
+                this.lang.buyWithCoinbase,
+                this.lang.coinbasePaymentConfirmed
+              )
+            }
+          }
         })
       })
-      // TODO
-      // engine.addSystem(this.intervals[intervalId]);
+      engine.addSystem(
+        this.intervals[intervalId].cb.bind(this.intervals[intervalId])
+      )
     } else {
       this.purchaseModal.notification(
         this.lang.buyWithCoinbase,
         this.lang.genericError
-      );
+      )
     }
   }
 
@@ -1159,26 +1170,24 @@ export default class DgWorldMarketplace extends EventEmitter {
       this.purchaseModal.notification(
         this.lang.buyWithPaper,
         this.lang.nftNotAvailable
-      );
+      )
       return
     }
     const params = `?nftAddress=${nftAddress}&tokenId=${tokenId}&resourceId=${resourceId}&buyerAddress=${this.fromAddress}&currency=USDT`
     this.purchaseModal.notification(
       this.lang.buyWithPaper,
       this.lang.generatingPaymentLink
-    );
+    )
     const paperRes: any = await this.get(`/paper/payment-link` + params)
-    // TODO
-    // this.toggleLoader(false)
     if (paperRes?.status === 200) {
-      this.purchaseModal.toggleModals();
+      this.purchaseModal.toggleModals()
       const paymentLink = paperRes.data
-      this.purchaseModal.showQrAndUrl(undefined, paymentLink);
+      this.purchaseModal.showQrAndUrl(undefined, paymentLink)
     } else {
       this.purchaseModal.notification(
         this.lang.buyWithPaper,
         this.lang.genericError
-      );
+      )
     }
   }
 
@@ -1260,7 +1269,6 @@ export default class DgWorldMarketplace extends EventEmitter {
         data.type === 'slot'
           ? this.handleJoystickSlotData(data)
           : this.handleJoystickBannerData(data)
-        // this.handleJoystickData(data)
       }
 
       this.wsJoystick.onerror = (err) => {
@@ -1293,9 +1301,6 @@ export default class DgWorldMarketplace extends EventEmitter {
       case 'sell':
         void this.replaceNft(payload)
         break
-      // case 'joystick':
-      //   void this.handleJoystickData(payload as JoystickData)
-      //   break
       default:
         break
     }
@@ -1348,51 +1353,44 @@ export default class DgWorldMarketplace extends EventEmitter {
   private handleJoystickBannerData(payload: JoystickBannerData): void {
     if (!(payload !== undefined)) return
     const {
-      // posX,
-      // posY,
-      // posZ,
-      // scaleX,
-      // scaleY,
-      // scaleZ,
-      // rotX,
-      // rotY,
-      // rotZ,
+      posX,
+      posY,
+      posZ,
+      scaleX,
+      scaleY,
+      scaleZ,
+      rotX,
+      rotY,
+      rotZ,
       bannerId
     } = payload
     if (this.inViewBanners[bannerId] !== undefined) {
-      // TODO
-      // this.inViewBanners[bannerId].entity.components["engine.transform"] =
-      //   new Transform({
-      //     position: new Vector3(+posX, +posY, +posZ),
-      //     scale: new Vector3(scaleX, scaleY, scaleZ),
-      //     rotation: Quaternion.Euler(rotX, rotY, rotZ),
-      //   });
+      Transform.createOrReplace(this.inViewBanners[bannerId].entity, {
+        position: Vector3.create(+posX, +posY, +posZ),
+        scale: Vector3.create(scaleX, scaleY, scaleZ),
+        rotation: Quaternion.fromEulerDegrees(rotX, rotY, rotZ)
+      })
     }
   }
 
   private onEvent(ev: any): void {
     if (this.purchaseModal.notifyOnEvent) {
-      const data = typeof ev.data === "string" ? JSON.parse(ev.data) : ev.data;
-      const { status, type, transactionHash, message } = data;
-      if (type === "buy") {
-        if (status === "refund")
+      const data = typeof ev.data === 'string' ? JSON.parse(ev.data) : ev.data
+      const { status, type, transactionHash, message } = data
+      if (type === 'buy') {
+        if (status === 'refund')
           this.purchaseModal.notification(
             this.lang.purchaseRefunded,
-            message + " txHash: " + transactionHash
-          );
-        else this.purchaseModal.notification("", this.lang.purchaseSucceed);
-      } else if (type === "cancel") {
+            message + ' txHash: ' + transactionHash
+          )
+        else this.purchaseModal.notification('', this.lang.purchaseSucceed)
+      } else if (type === 'cancel') {
         this.purchaseModal.notification(
           this.lang.listingCanceled,
-          "txHash: " + transactionHash
-        );
+          'txHash: ' + transactionHash
+        )
       }
     }
-  }
-
-  private toggleLoader(show: boolean = true): void {
-    // TODO
-    // if (this.loader) show ? this.loader.show() : this.loader.hide();
   }
 
   public async cancelNft(resourceId: string): Promise<void> {
@@ -1510,17 +1508,11 @@ export default class DgWorldMarketplace extends EventEmitter {
   }
 
   private readonly delay = async (ms: number): Promise<void> => {
-    await new Promise((resolve) => {
-      // TODO
-      // const ent = new Entity();
-      // engine.addEntity(ent);
-      // ent.addComponent(
-      //   new ecs.Delay(ms, () => {
-      //     resolve();
-      //     engine.removeEntity(ent);
-      //   })
-      // );
-    })
+    const now = Date.now()
+    while (ms > 0) {
+      ms -= Date.now() - now
+      await waitNextTick()
+    }
   }
 
   public getVariables(): Variable[] {

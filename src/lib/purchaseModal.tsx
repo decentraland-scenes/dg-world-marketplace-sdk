@@ -9,6 +9,9 @@
 //   Paper,
 // }
 
+import ReactEcs, { UiEntity } from '@dcl/sdk/react-ecs'
+import { type LangText } from '../interfaces'
+
 // export default class PurchaseModal {
 //   private onBuyCB: (selectedBuyType: number) => void;
 //   private sansSerifBold = new Font(Fonts.SansSerif_Bold);
@@ -689,11 +692,36 @@ type OpenModalProps = {
   paymentMethod: string
   balance: string
 }
+type PurchaseModalConstructorProps = {
+  onBuyCB: (selectedBuyType: number) => Promise<void> | void
+  lang: LangText
+}
 
 export default class PurchaseModal {
   public notifyOnEvent: boolean = true
+  private readonly onBuyCB: PurchaseModalConstructorProps['onBuyCB']
+  private readonly lang: LangText
+  notificationContainerVisible: boolean = false
+  mainContainerVisible: boolean = false
+  notificationTitle: string = ''
+  notificationText: string = ''
+  nftImage: string = ''
+  nftTitle: string = ''
+  nftDesc: string = ''
+
+  constructor(props: PurchaseModalConstructorProps) {
+    this.onBuyCB = props.onBuyCB
+    this.lang = props.lang
+  }
 
   public openModal(props: OpenModalProps): void {
+    this.nftImage = props.nftImagePath
+    this.nftTitle = props.nftTitle
+    this.nftDesc = props.nftDesc
+
+    this.mainContainerVisible = true
+    this.notificationContainerVisible = false
+    console.log('openModal', props)
     // const {
     //     nftImagePath,
     //     nftTitle,
@@ -709,24 +737,155 @@ export default class PurchaseModal {
     // } = props
   }
 
-  public resetModal(): void {
-
-  }
+  public resetModal(): void {}
 
   public toggleModals(showNotification: boolean = false): void {
-  
+    if (showNotification) {
+      this.notificationContainerVisible = true
+      this.mainContainerVisible = false
+    } else {
+      this.notificationContainerVisible = false
+      this.mainContainerVisible = true
+    }
   }
 
   public showQrAndUrl(qr?: string, url?: string): void {
+    if (qr !== undefined) {
+      this.nftImage = qr
+    }
 
+    if (url !== undefined) {
+      // this.buyButton.source = new Texture(`${backendUrlPublic}buyButton.png`);
+      // this.isBuying = false;
+      // this.buyText.positionX = 15;
+      // this.buyText.fontSize = 15;
+      // this.buyText.value = this.lang.openPaymentLink;
+      // this.buyButton.onClick = new OnPointerDown(() => {
+      //   openExternalURL(url);
+      //   this.notification("", this.lang.waitingCoinbase);
+      //   this.UIContainer.visible = false;
+      // });
+    }
+    // this.UIContainer.visible = true;
   }
 
   public notification(title: string, text: string): void {
-
+    this.notificationTitle = title
+    this.notificationText = text
+    this.mainContainerVisible = false
+    this.notificationContainerVisible = true
   }
 
   public hideNotifications(): void {
-
+    this.notificationContainerVisible = false
   }
 
+  public render(): ReactEcs.JSX.Element {
+    return (
+      <UiEntity>
+        {this.mainContainerVisible && (
+          <UiEntity
+            uiTransform={{
+              width: 600,
+              height: 300,
+              positionType: 'absolute',
+              position: { left: '50%', top: '50%' },
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+            uiBackground={{
+              color: { r: 0, g: 0, b: 0, a: 0.92 }
+            }}
+          >
+            {/* NFT Image */}
+            <UiEntity
+              uiTransform={{
+                width: 256,
+                height: 256,
+                positionType: 'absolute',
+                margin: '-150px 0 0 -150px'
+              }}
+              uiBackground={{
+                texture: { src: this.nftImage }
+              }}
+            />
+
+            {/* NFT Title */}
+            <UiEntity
+              uiTransform={{
+                width: 300,
+                positionType: 'absolute',
+                margin: '-20px 0 0 0'
+              }}
+              uiText={{
+                value: this.nftTitle,
+                fontSize: 25,
+                textAlign: 'top-right',
+                color: { r: 1, g: 1, b: 1, a: 1 }
+              }}
+            />
+
+            {/* NFT Description */}
+            <UiEntity
+              uiTransform={{
+                width: 300,
+                positionType: 'absolute',
+                margin: '-60px 0 0 0'
+              }}
+              uiText={{
+                value: this.nftDesc,
+                fontSize: 13,
+                textAlign: 'top-right',
+                color: { r: 0.5, g: 0.5, b: 0.5, a: 1 }
+              }}
+            />
+          </UiEntity>
+        )}
+
+        {this.notificationContainerVisible && (
+          <UiEntity
+            uiTransform={{
+              width: 300,
+              positionType: 'absolute',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+            uiBackground={{
+              color: { r: 0, g: 0, b: 0, a: 0.92 }
+            }}
+          >
+            {/* Notification Title */}
+            <UiEntity
+              uiTransform={{
+                width: 300,
+                positionType: 'absolute',
+                margin: '10px 0 0 0'
+              }}
+              uiText={{
+                value: this.notificationTitle,
+                fontSize: 25,
+                textAlign: 'top-left',
+                color: { r: 1, g: 1, b: 1, a: 1 }
+              }}
+            />
+
+            {/* Notification Text */}
+            <UiEntity
+              uiTransform={{
+                width: 300,
+                positionType: 'absolute',
+                margin: '30px 0 0 0'
+              }}
+              uiText={{
+                value: this.notificationText,
+                fontSize: 15,
+                textAlign: 'top-left',
+                color: { r: 1, g: 1, b: 1, a: 1 }
+              }}
+            />
+          </UiEntity>
+        )}
+      </UiEntity>
+    )
+  }
 }

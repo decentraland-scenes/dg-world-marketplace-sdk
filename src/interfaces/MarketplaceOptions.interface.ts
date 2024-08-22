@@ -1,4 +1,3 @@
-import { type IEngine } from '@dcl/sdk/ecs'
 import type * as ISlot from './Slot.interface'
 
 /**
@@ -67,9 +66,6 @@ export type MarketplaceOptions = {
   slots?: ISlot.Slot[]
   previewEnv?: PreviewEnv
   network: Network
-  engine: IEngine
-  // TODO
-  // canvas?: UICanvas;
   zoneId?: number
   debug?: boolean
   lang?: {
