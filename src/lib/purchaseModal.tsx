@@ -7,7 +7,7 @@ import ReactEcs, { UiEntity } from '@dcl/sdk/react-ecs'
 import { type LangText } from '../interfaces'
 import { Color4 } from '@dcl/sdk/math'
 import * as utils from '@dcl-sdk/utils'
-
+import Canvas from '../util/canvas/Canvas'
 
 enum BuySelection {
   BAG,
@@ -705,9 +705,9 @@ export default class PurchaseModal {
   public selectedBuyType: BuySelection = BuySelection.BAG
   private readonly onBuyCB: PurchaseModalConstructorProps['onBuyCB']
   private readonly lang: LangText
-  isBuyClicked:boolean = false
+  isBuyClicked: boolean = false
   notificationContainerVisible: boolean = false
-  mainContainerVisible: boolean = true
+  mainContainerVisible: boolean = false
   notificationTitle: string = ''
   notificationText: string = ''
   nftImage: string = 'lib/assets/pants.jpg'
@@ -715,7 +715,7 @@ export default class PurchaseModal {
   nftTitle: string = 'Title'
   nftDesc: string =
     'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vivamus aliquet consectetur neque, posuere eleifend nisi euismod sed.'
-  
+
   constructor(props: PurchaseModalConstructorProps) {
     this.onBuyCB = props.onBuyCB
     this.lang = props.lang
@@ -797,329 +797,337 @@ export default class PurchaseModal {
 
   public render(): ReactEcs.JSX.Element {
     return (
-      <UiEntity
-        uiTransform={{
-          width: '100%',
-          height: '100%',
-          positionType: 'absolute',
-          alignItems: 'center',
-          justifyContent: 'center'
-        }}
-      >
-        {this.mainContainerVisible && (
-          <UiEntity
-            uiTransform={{
-              width: 600,
-              height: 300,
-              alignItems: 'flex-start',
-              justifyContent: 'space-between',
-              flexDirection: 'row',
-              padding: '20px'
-            }}
-            uiBackground={{
-              color: { r: 0, g: 0, b: 0, a: 0.92 }
-            }}
-          >
-            {/* NFT Image */}
+      <Canvas>
+        <UiEntity
+          uiTransform={{width:'100%', justifyContent: 'center', alignItems: 'center' }}
+        >
+          {this.mainContainerVisible && (
             <UiEntity
               uiTransform={{
-                width: 256,
-                height: 256
+                width: 600,
+                height: 300,
+                alignItems: 'flex-start',
+                justifyContent: 'space-between',
+                flexDirection: 'row',
+                padding: '20px'
               }}
               uiBackground={{
-                texture: { src: this.nftImage },
-                textureMode: 'center'
-              }}
-            />
-            <UiEntity
-              uiTransform={{
-                width: '50%',
-                height: 256,
-                alignItems: 'flex-start',
-                flexDirection: 'column',
-                justifyContent: 'flex-start'
+                color: { r: 0, g: 0, b: 0, a: 0.92 }
               }}
             >
-              {/* NFT Title */}
+              {/* NFT Image */}
               <UiEntity
                 uiTransform={{
-                  width: '100%',
-                  height: 25
+                  width: 256,
+                  height: 256
+                }}
+                uiBackground={{
+                  texture: { src: this.nftImage },
+                  textureMode: 'center'
+                }}
+              />
+              <UiEntity
+                uiTransform={{
+                  width: '50%',
+                  height: 256,
+                  alignItems: 'flex-start',
+                  flexDirection: 'column',
+                  justifyContent: 'flex-start'
+                }}
+              >
+                {/* NFT Title */}
+                <UiEntity
+                  uiTransform={{
+                    width: '100%',
+                    height: 25
+                  }}
+                  uiText={{
+                    value: this.nftTitle,
+                    fontSize: 25,
+                    textAlign: 'top-left',
+                    color: { r: 1, g: 1, b: 1, a: 1 }
+                  }}
+                />
+                {/* NFT Description */}
+                <UiEntity
+                  uiTransform={{
+                    width: '100%',
+                    height: 60,
+                    margin: { top: 5 }
+                  }}
+                  uiText={{
+                    value: this.nftDesc,
+                    fontSize: 13,
+                    textAlign: 'top-left',
+                    color: { r: 0.5, g: 0.5, b: 0.5, a: 1 }
+                  }}
+                />
+                <UiEntity
+                  uiTransform={{
+                    width: '100%',
+                    height: 'auto',
+                    flexDirection: 'column',
+                    flexGrow: 1,
+                    justifyContent: 'flex-end'
+                  }}
+                >
+                  <UiEntity
+                    uiTransform={{
+                      width: '100%',
+                      height: '50%',
+                      justifyContent: 'flex-start',
+                      alignItems: 'center',
+                      flexDirection: 'row'
+                    }}
+                  >
+                    <UiEntity
+                      onMouseDown={() => {
+                        this.selectedBuyType = BuySelection.BAG
+                      }}
+                      uiTransform={{
+                        height: '95%',
+                        width: '23%',
+                        margin: '1%',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}
+                      uiBackground={{
+                        color:
+                          this.selectedBuyType === BuySelection.BAG
+                            ? Color4.Gray()
+                            : Color4.Clear()
+                      }}
+                    >
+                      <UiEntity
+                        uiTransform={{ width: '80%', height: '60%' }}
+                        uiBackground={{
+                          texture: { src: 'lib/assets/ice.png' }
+                        }}
+                      />
+                      <UiEntity
+                        uiTransform={{ width: '100%', height: '20%' }}
+                        uiText={{ value: 'Bag', textAlign: 'middle-center' }}
+                      />
+                    </UiEntity>
+                    <UiEntity
+                      onMouseDown={() => {
+                        this.selectedBuyType = BuySelection.Binance
+                      }}
+                      uiTransform={{
+                        height: '95%',
+                        width: '23%',
+                        margin: '1%',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}
+                      uiBackground={{
+                        color:
+                          this.selectedBuyType === BuySelection.Binance
+                            ? Color4.Gray()
+                            : Color4.Clear()
+                      }}
+                    >
+                      <UiEntity
+                        uiTransform={{ width: '80%', height: '60%' }}
+                        uiBackground={{
+                          texture: { src: 'lib/assets/binance.png' }
+                        }}
+                      />
+                      <UiEntity
+                        uiTransform={{ width: '100%', height: '20%' }}
+                        uiText={{
+                          value: 'Binance',
+                          textAlign: 'middle-center'
+                        }}
+                      />
+                    </UiEntity>
+                    <UiEntity
+                      onMouseDown={() => {
+                        this.selectedBuyType = BuySelection.Coinbase
+                      }}
+                      uiTransform={{
+                        height: '95%',
+                        width: '23%',
+                        margin: '1%',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}
+                      uiBackground={{
+                        color:
+                          this.selectedBuyType === BuySelection.Coinbase
+                            ? Color4.Gray()
+                            : Color4.Clear()
+                      }}
+                    >
+                      <UiEntity
+                        uiTransform={{ width: '80%', height: '60%' }}
+                        uiBackground={{
+                          texture: { src: 'lib/assets/coinbase.png' }
+                        }}
+                      />
+                      <UiEntity
+                        uiTransform={{ width: '100%', height: '20%' }}
+                        uiText={{
+                          value: 'Coinbase',
+                          textAlign: 'middle-center'
+                        }}
+                      />
+                    </UiEntity>
+                  </UiEntity>
+                  <UiEntity
+                    onMouseDown={() => {
+                      this.notifyOnEvent = !this.notifyOnEvent
+                    }}
+                    uiTransform={{
+                      width: '100%',
+                      height: '22.5%',
+                      alignItems: 'center',
+                      justifyContent: 'flex-start',
+                      flexDirection: 'row'
+                    }}
+                  >
+                    <UiEntity
+                      uiTransform={{
+                        width: '10%',
+                        height: '80%',
+                        alignItems: 'flex-start',
+                        justifyContent: 'flex-start',
+                        flexDirection: 'row',
+                        margin: '5%'
+                      }}
+                      uiBackground={{
+                        color: this.notifyOnEvent
+                          ? Color4.Green()
+                          : Color4.Red()
+                      }}
+                    />
+                    <UiEntity
+                      uiTransform={{
+                        width: '50%',
+                        height: '90%',
+                        alignItems: 'flex-start',
+                        justifyContent: 'flex-start',
+                        flexDirection: 'row'
+                      }}
+                      uiText={{
+                        value: 'Notify me on event',
+                        textAlign: 'middle-left'
+                      }}
+                    />
+                  </UiEntity>
+                  <UiEntity
+                    uiTransform={{
+                      width: '100%',
+                      height: '27.5%',
+                      alignItems: 'flex-end',
+                      justifyContent: 'space-between',
+                      flexDirection: 'row'
+                    }}
+                  >
+                    <UiEntity
+                      uiTransform={{
+                        width: '35%',
+                        height: '90%',
+                        alignItems: 'center',
+                        justifyContent: 'flex-start',
+                        flexDirection: 'row'
+                      }}
+                      uiText={{
+                        value: this.nftPrice.toString(),
+                        fontSize: 15,
+                        textAlign: 'middle-right'
+                      }}
+                      uiBackground={{ color: Color4.Black() }}
+                    >
+                      <UiEntity
+                        uiTransform={{
+                          width: '30%',
+                          height: '80%',
+                          justifyContent: 'flex-start',
+                          flexDirection: 'row',
+                          margin: { left: '5%' }
+                        }}
+                        uiBackground={{
+                          texture: { src: 'lib/assets/bag.png' }
+                        }}
+                      />
+                    </UiEntity>
+                    <UiEntity
+                      onMouseDown={() => {
+                        this.onMouseDownBuy()
+                      }}
+                      uiTransform={{
+                        width: '60%',
+                        height: '90%',
+                        alignItems: 'flex-start',
+                        justifyContent: 'flex-start',
+                        flexDirection: 'row'
+                      }}
+                      uiText={{
+                        value: 'Buy',
+                        fontSize: 20,
+                        textAlign: 'middle-center'
+                      }}
+                      uiBackground={{
+                        color: this.isBuyClicked ? Color4.Gray() : Color4.Blue()
+                      }}
+                    />
+                  </UiEntity>
+                </UiEntity>
+              </UiEntity>
+            </UiEntity>
+          )}
+
+          {this.notificationContainerVisible && (
+            <UiEntity
+              uiTransform={{
+                width: 300,
+                height: 200,
+
+                positionType: 'absolute',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+              uiBackground={{
+                color: { r: 0, g: 0, b: 0, a: 0.92 }
+              }}
+            >
+              {/* Notification Title */}
+              <UiEntity
+                uiTransform={{
+                  width: 300,
+                  positionType: 'absolute',
+                  margin: '10px 0 0 0'
                 }}
                 uiText={{
-                  value: this.nftTitle,
+                  value: this.notificationTitle,
                   fontSize: 25,
                   textAlign: 'top-left',
                   color: { r: 1, g: 1, b: 1, a: 1 }
                 }}
               />
-              {/* NFT Description */}
+
+              {/* Notification Text */}
               <UiEntity
                 uiTransform={{
-                  width: '100%',
-                  height: 60,
-                  margin: { top: 5 }
+                  width: 300,
+                  positionType: 'absolute',
+                  margin: '30px 0 0 0'
                 }}
                 uiText={{
-                  value: this.nftDesc,
-                  fontSize: 13,
+                  value: this.notificationText,
+                  fontSize: 15,
                   textAlign: 'top-left',
-                  color: { r: 0.5, g: 0.5, b: 0.5, a: 1 }
+                  color: { r: 1, g: 1, b: 1, a: 1 }
                 }}
               />
-              <UiEntity
-                uiTransform={{
-                  width: '100%',
-                  height: 'auto',
-                  flexDirection: 'column',
-                  flexGrow: 1,
-                  justifyContent: 'flex-end'
-                }}
-              >
-                <UiEntity
-                  uiTransform={{
-                    width: '100%',
-                    height: '50%',
-                    justifyContent: 'flex-start',
-                    alignItems: 'center',
-                    flexDirection: 'row'
-                  }}
-                >
-                  <UiEntity
-                    onMouseDown={() => {
-                      this.selectedBuyType = BuySelection.BAG
-                    }}
-                    uiTransform={{
-                      height: '95%',
-                      width: '23%',
-                      margin: '1%',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      justifyContent: 'center'
-                    }}
-                    uiBackground={{
-                      color:
-                        this.selectedBuyType === BuySelection.BAG
-                          ? Color4.Gray()
-                          : Color4.Clear()
-                    }}
-                  >
-                    <UiEntity
-                      uiTransform={{ width: '80%', height: '60%' }}
-                      uiBackground={{ texture: { src: 'lib/assets/ice.png' } }}
-                    />
-                    <UiEntity
-                      uiTransform={{ width: '100%', height: '20%' }}
-                      uiText={{ value: 'Bag', textAlign: 'middle-center' }}
-                    />
-                  </UiEntity>
-                  <UiEntity
-                    onMouseDown={() => {
-                      this.selectedBuyType = BuySelection.Binance
-                    }}
-                    uiTransform={{
-                      height: '95%',
-                      width: '23%',
-                      margin: '1%',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      justifyContent: 'center'
-                    }}
-                    uiBackground={{
-                      color:
-                        this.selectedBuyType === BuySelection.Binance
-                          ? Color4.Gray()
-                          : Color4.Clear()
-                    }}
-                  >
-                    <UiEntity
-                      uiTransform={{ width: '80%', height: '60%' }}
-                      uiBackground={{
-                        texture: { src: 'lib/assets/binance.png' }
-                      }}
-                    />
-                    <UiEntity
-                      uiTransform={{ width: '100%', height: '20%' }}
-                      uiText={{ value: 'Binance', textAlign: 'middle-center' }}
-                    />
-                  </UiEntity>
-                  <UiEntity
-                    onMouseDown={() => {
-                      this.selectedBuyType = BuySelection.Coinbase
-                    }}
-                    uiTransform={{
-                      height: '95%',
-                      width: '23%',
-                      margin: '1%',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      justifyContent: 'center'
-                    }}
-                    uiBackground={{
-                      color:
-                        this.selectedBuyType === BuySelection.Coinbase
-                          ? Color4.Gray()
-                          : Color4.Clear()
-                    }}
-                  >
-                    <UiEntity
-                      uiTransform={{ width: '80%', height: '60%' }}
-                      uiBackground={{
-                        texture: { src: 'lib/assets/coinbase.png' }
-                      }}
-                    />
-                    <UiEntity
-                      uiTransform={{ width: '100%', height: '20%' }}
-                      uiText={{ value: 'Coinbase', textAlign: 'middle-center' }}
-                    />
-                  </UiEntity>
-                </UiEntity>
-                <UiEntity
-                  onMouseDown={() => {
-                    this.notifyOnEvent = !this.notifyOnEvent
-                  }}
-                  uiTransform={{
-                    width: '100%',
-                    height: '22.5%',
-                    alignItems: 'center',
-                    justifyContent: 'flex-start',
-                    flexDirection: 'row'
-                  }}
-                >
-                  <UiEntity
-                    uiTransform={{
-                      width: '10%',
-                      height: '80%',
-                      alignItems: 'flex-start',
-                      justifyContent: 'flex-start',
-                      flexDirection: 'row',
-                      margin: '5%'
-                    }}
-                    uiBackground={{
-                      color: this.notifyOnEvent ? Color4.Green() : Color4.Red()
-                    }}
-                  />
-                  <UiEntity
-                    uiTransform={{
-                      width: '50%',
-                      height: '90%',
-                      alignItems: 'flex-start',
-                      justifyContent: 'flex-start',
-                      flexDirection: 'row'
-                    }}
-                    uiText={{
-                      value: 'Notify me on event',
-                      textAlign: 'middle-left'
-                    }}
-                  />
-                </UiEntity>
-                <UiEntity
-                  uiTransform={{
-                    width: '100%',
-                    height: '27.5%',
-                    alignItems: 'flex-end',
-                    justifyContent: 'space-between',
-                    flexDirection: 'row'
-                  }}
-                >
-                  
-                  <UiEntity
-                    uiTransform={{
-                      width: '35%',
-                      height: '90%',
-                      alignItems: 'center',
-                      justifyContent: 'flex-start',
-                      flexDirection: 'row'
-                    }}
-                    uiText={{
-                      value: this.nftPrice.toString(),
-                      fontSize:15,
-                      textAlign: 'middle-right',
-
-                    }}
-                    uiBackground={{color:Color4.Black()}}
-                  >
-                    <UiEntity
-                    uiTransform={{
-                      width: '30%',
-                      height: '80%',
-                      justifyContent: 'flex-start',
-                        flexDirection: 'row',
-                      margin:{left:'5%'}
-                    }}
-                    uiBackground={{
-                      texture:{src:'lib/assets/bag.png'}
-                    }}
-                  />
-                  </UiEntity>
-                  <UiEntity
-                    onMouseDown={() => { this.onMouseDownBuy() }}
-                    uiTransform={{
-                      width: '60%',
-                      height: '90%',
-                      alignItems: 'flex-start',
-                      justifyContent: 'flex-start',
-                      flexDirection: 'row'
-                    }}
-                    uiText={{
-                      value: 'Buy',
-                      fontSize:20,
-                      textAlign: 'middle-center'
-                    }}
-                    uiBackground={{color: this.isBuyClicked ? Color4.Gray() : Color4.Blue()}}
-                  />
-                </UiEntity>
-              </UiEntity>
             </UiEntity>
-          </UiEntity>
-        )}
-
-        {this.notificationContainerVisible && (
-          <UiEntity
-            uiTransform={{
-            width: 300,
-            height:200,
-
-              positionType: 'absolute',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}
-            uiBackground={{
-              color: { r: 0, g: 0, b: 0, a: 0.92 }
-            }}
-          >
-            {/* Notification Title */}
-            <UiEntity
-              uiTransform={{
-                width: 300,
-                positionType: 'absolute',
-                margin: '10px 0 0 0'
-              }}
-              uiText={{
-                value: this.notificationTitle,
-                fontSize: 25,
-                textAlign: 'top-left',
-                color: { r: 1, g: 1, b: 1, a: 1 }
-              }}
-            />
-
-            {/* Notification Text */}
-            <UiEntity
-              uiTransform={{
-              width: 300,
-                positionType: 'absolute',
-                margin: '30px 0 0 0'
-              }}
-              uiText={{
-                value: this.notificationText,
-                fontSize: 15,
-                textAlign: 'top-left',
-                color: { r: 1, g: 1, b: 1, a: 1 }
-              }}
-            />
-          </UiEntity>
-         )}
-      </UiEntity>
+          )}
+        </UiEntity>
+      </Canvas>
     )
   }
 }
