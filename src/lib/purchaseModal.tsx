@@ -792,6 +792,7 @@ export default class PurchaseModal {
     utils.timers.setTimeout(() => {
       this.mainContainerVisible = false
       this.isBuyClicked = false
+      this.notification(`Buy with ${BuySelection[this.selectedBuyType]}`,'Buying NFT...')
     }, 200)
   }
 
@@ -815,6 +816,17 @@ export default class PurchaseModal {
                 color: { r: 0, g: 0, b: 0, a: 0.92 }
               }}
             >
+              <UiEntity
+                onMouseDown={() => { this.mainContainerVisible = false }}
+                uiTransform={{
+                  width: 50,
+                  height: 50,
+                  positionType: 'absolute',
+                  position:{top:-15, right:-15}
+                }}
+                uiBackground={{
+                  color:Color4.Red()
+                }}/>
               {/* NFT Image */}
               <UiEntity
                 uiTransform={{
@@ -912,7 +924,7 @@ export default class PurchaseModal {
                     </UiEntity>
                     <UiEntity
                       onMouseDown={() => {
-                        this.selectedBuyType = BuySelection.Binance
+                        // this.selectedBuyType = BuySelection.Binance
                       }}
                       uiTransform={{
                         height: '95%',
@@ -932,7 +944,9 @@ export default class PurchaseModal {
                       <UiEntity
                         uiTransform={{ width: '80%', height: '60%' }}
                         uiBackground={{
-                          texture: { src: 'lib/assets/binance.png' }
+                          texture: { src: 'src/lib/assets/binance.png' },
+                          textureMode:'center',
+                          color:Color4.Gray()
                         }}
                       />
                       <UiEntity
@@ -945,7 +959,7 @@ export default class PurchaseModal {
                     </UiEntity>
                     <UiEntity
                       onMouseDown={() => {
-                        this.selectedBuyType = BuySelection.Coinbase
+                        // this.selectedBuyType = BuySelection.Coinbase
                       }}
                       uiTransform={{
                         height: '95%',
@@ -965,7 +979,9 @@ export default class PurchaseModal {
                       <UiEntity
                         uiTransform={{ width: '80%', height: '60%' }}
                         uiBackground={{
-                          texture: { src: 'lib/assets/coinbase.png' }
+                          texture: { src: 'lib/assets/coinbase.png' },
+                          textureMode:'center',
+                          color:Color4.Gray()
                         }}
                       />
                       <UiEntity
@@ -1080,12 +1096,11 @@ export default class PurchaseModal {
               </UiEntity>
             </UiEntity>
           )}
-
           {this.notificationContainerVisible && (
             <UiEntity
               uiTransform={{
                 width: 300,
-                height: 200,
+                height: 120,
 
                 positionType: 'absolute',
                 alignItems: 'center',
@@ -1095,35 +1110,54 @@ export default class PurchaseModal {
                 color: { r: 0, g: 0, b: 0, a: 0.92 }
               }}
             >
-              {/* Notification Title */}
+               <UiEntity
+                onMouseDown={() => { this.notificationContainerVisible = false }}
+                uiTransform={{
+                  width: 50,
+                  height: 50,
+                  positionType: 'absolute',
+                  position:{top:-15, right:-15}
+                }}
+                uiBackground={{
+                  color:Color4.Red()
+                }}/>
               <UiEntity
                 uiTransform={{
-                  width: 300,
-                  positionType: 'absolute',
-                  margin: '10px 0 0 0'
+                  width: '100%',
+                  height: '100%',
+                  alignItems: 'center',
+                  flexDirection: 'column',
+                  justifyContent: 'center'
                 }}
-                uiText={{
-                  value: this.notificationTitle,
-                  fontSize: 25,
-                  textAlign: 'top-left',
-                  color: { r: 1, g: 1, b: 1, a: 1 }
-                }}
-              />
-
-              {/* Notification Text */}
-              <UiEntity
-                uiTransform={{
-                  width: 300,
-                  positionType: 'absolute',
-                  margin: '30px 0 0 0'
-                }}
-                uiText={{
-                  value: this.notificationText,
-                  fontSize: 15,
-                  textAlign: 'top-left',
-                  color: { r: 1, g: 1, b: 1, a: 1 }
-                }}
-              />
+              >
+                {/* Notification Title */}
+                <UiEntity
+                  uiTransform={{
+                    width: '100%',
+                    height: 25
+                  }}
+                  uiText={{
+                    value: this.notificationTitle,
+                    fontSize: 25,
+                    textAlign: 'middle-center',
+                    color: { r: 1, g: 1, b: 1, a: 1 }
+                  }}
+                />
+                {/* Notification Text */}
+                <UiEntity
+                  uiTransform={{
+                    width: '100%',
+                    height: 60,
+                    margin: { top: 5 }
+                  }}
+                  uiText={{
+                    value: this.notificationText,
+                    fontSize: 13,
+                    textAlign: 'middle-center',
+                    color: { r: 0.5, g: 0.5, b: 0.5, a: 1 }
+                  }}
+                />
+              </UiEntity>
             </UiEntity>
           )}
         </UiEntity>
