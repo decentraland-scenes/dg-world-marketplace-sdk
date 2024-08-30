@@ -710,9 +710,9 @@ export default class PurchaseModal {
   mainContainerVisible: boolean = false
   notificationTitle: string = ''
   notificationText: string = ''
-  nftImage: string = 'lib/assets/pants.jpg'
-  nftPrice: number = 0
-  nftTitle: string = 'Title'
+  nftImage: string = 'https://i.imgur.com/gKBeBV0.png'
+  nftPrice: number = 5
+  nftTitle: string = 'Pants'
   nftDesc: string =
     'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vivamus aliquet consectetur neque, posuere eleifend nisi euismod sed.'
 
@@ -825,7 +825,8 @@ export default class PurchaseModal {
                   position:{top:-15, right:-15}
                 }}
                 uiBackground={{
-                  color:Color4.Red()
+                  texture: { src: 'https://api.dglive.org/public/close.png' },
+                  textureMode: 'stretch'
                 }}/>
               {/* NFT Image */}
               <UiEntity
@@ -914,7 +915,8 @@ export default class PurchaseModal {
                       <UiEntity
                         uiTransform={{ width: '80%', height: '60%' }}
                         uiBackground={{
-                          texture: { src: 'lib/assets/ice.png' }
+                          texture: { src: 'https://api.dglive.org/public/bag.png' },
+                          textureMode:'stretch'
                         }}
                       />
                       <UiEntity
@@ -944,8 +946,8 @@ export default class PurchaseModal {
                       <UiEntity
                         uiTransform={{ width: '80%', height: '60%' }}
                         uiBackground={{
-                          texture: { src: 'src/lib/assets/binance.png' },
-                          textureMode:'center',
+                          texture: { src: 'https://api.dglive.org/public/binance.png' },
+                          textureMode:'stretch',
                           color:Color4.Gray()
                         }}
                       />
@@ -979,8 +981,8 @@ export default class PurchaseModal {
                       <UiEntity
                         uiTransform={{ width: '80%', height: '60%' }}
                         uiBackground={{
-                          texture: { src: 'lib/assets/coinbase.png' },
-                          textureMode:'center',
+                          texture: { src: 'https://api.dglive.org/public/coinbase.png' },
+                          textureMode:'stretch',
                           color:Color4.Gray()
                         }}
                       />
@@ -1015,9 +1017,12 @@ export default class PurchaseModal {
                         margin: '5%'
                       }}
                       uiBackground={{
-                        color: this.notifyOnEvent
-                          ? Color4.Green()
-                          : Color4.Red()
+                        texture: {src:
+                          this.notifyOnEvent 
+                            ? 'https://api.dglive.org/public/tick.png'
+                            : 'https://api.dglive.org/public/close.png'
+                        },
+                        textureMode:'stretch'
                       }}
                     />
                     <UiEntity
@@ -1067,7 +1072,8 @@ export default class PurchaseModal {
                           margin: { left: '5%' }
                         }}
                         uiBackground={{
-                          texture: { src: 'lib/assets/bag.png' }
+                          texture: { src: 'https://api.dglive.org/public/bag.png' },
+                          textureMode:'stretch'
                         }}
                       />
                     </UiEntity>
@@ -1119,7 +1125,8 @@ export default class PurchaseModal {
                   position:{top:-15, right:-15}
                 }}
                 uiBackground={{
-                  color:Color4.Red()
+                  texture: { src: 'https://api.dglive.org/public/close.png' },
+                  textureMode: 'stretch'
                 }}/>
               <UiEntity
                 uiTransform={{
